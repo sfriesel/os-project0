@@ -6,8 +6,10 @@ struct node_vtable;
 
 struct node {
 	struct node_vtable * vtable;
-	struct node * (*factory)(FILE * file);
+	
 };
+
+struct node * factory(FILE * file);
 
 struct leaf {
 	struct node node;
