@@ -8,7 +8,7 @@ struct node;
 struct node_vtable {
 	void (*ask_question)(struct node * this);
 	struct node * (*process_answer)(char answer);
-	char * (*serialize)(struct node * this);
+	struct iovec * (*serialize)(struct node * this);
 	void (*node_dtor)(struct node * this);
 };
 
@@ -31,6 +31,7 @@ struct inner_node {
 };
 
 struct node * node_ctor(void);
+void node_ask_question(struct node * this);
 
 struct leaf * leaf_ctor(char * name);
 void leaf_dtor(struct leaf * this);

@@ -15,8 +15,12 @@ struct node * node_ctor(void) {
 	return this;
 }
 
-void node_dtor(struct node * this) {
+void _node_dtor(struct node * this) {
 	free(this);
+}
+
+void node_dtor(struct node * this) {
+	this->vtable->node_dtor(this);
 }
 
 struct leaf * leaf_ctor(char * name) {
@@ -28,6 +32,10 @@ struct leaf * leaf_ctor(char * name) {
 	strcpy(this->name, name);
 	
 	return this;
+}
+
+void node_ask_question(struct node * this) {
+	this->vtable->ask_question(this);
 }
 
 void leaf_ask_question(struct node * super) {
