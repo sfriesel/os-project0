@@ -38,9 +38,13 @@ void node_ask_question(struct node * this) {
 	this->vtable->ask_question(this);
 }
 
+struct iovec node_serialize(struct node * this) {
+	return this->vtable->serialize(this);
+}
+
 void leaf_ask_question(struct node * super) {
 	struct leaf * this = (struct leaf*)super;
-	printf("Is is it a %s?\n", this->name);
+	printf("Is it a %s?\n", this->name);
 }
 
 void inner_node_ask_question(struct node * super) {
