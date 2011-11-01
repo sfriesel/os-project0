@@ -7,7 +7,7 @@ struct node;
 
 struct node_vtable {
 	void (*ask_question)(struct node * this);
-	struct node * (*process_answer)(char answer);
+	struct node * (*process_answer)(char answer, struct node * parent);
 	struct iovec (*serialize)(struct node * this);
 	void (*node_dtor)(struct node * this);
 };
