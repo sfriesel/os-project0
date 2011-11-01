@@ -4,9 +4,9 @@
 #include <string.h>
 
 
-static const struct node_vtable leaf_funcs = { /*TODO*/ NULL, NULL, NULL };
+static const struct node_vtable leaf_funcs = { /*TODO*/ NULL, NULL, NULL, NULL };
 
-static const struct node_vtable inner_node_funcs = { /*TODO*/ NULL, NULL, NULL };
+static const struct node_vtable inner_node_funcs = { /*TODO*/ NULL, NULL, NULL, NULL };
 
 //virtual class constructor, only called by sub classes
 struct node * node_ctor(void) {
@@ -28,6 +28,16 @@ struct leaf * leaf_ctor(char * name) {
 	strcpy(this->name, name);
 	
 	return this;
+}
+
+void leaf_ask_question(struct node * super) {
+	struct leaf * this = (struct leaf*)super;
+	printf("Is is it a %s?\n", this->name);
+}
+
+void inner_node_ask_question(struct node * super) {
+	struct inner_node * this = (struct inner_node*)super;
+	printf("%s\n", this->question);
 }
 
 struct inner_node * inner_node_ctor(char * question) {

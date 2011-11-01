@@ -6,7 +6,8 @@
 struct node;
 
 struct node_vtable {
-	bool (*ask_question)(struct node * this);
+	void (*ask_question)(struct node * this);
+	struct node * (*process_answer)(char answer);
 	char * (*serialize)(struct node * this);
 	void (*node_dtor)(struct node * this);
 };
