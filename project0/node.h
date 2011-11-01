@@ -5,11 +5,10 @@
 struct node_vtable;
 
 struct node {
-	struct node_vtable * vtable;
-	
+	const struct node_vtable * vtable;
 };
 
-struct node * factory(FILE * file);
+struct node factory(FILE * file);
 
 struct leaf {
 	struct node node;
@@ -22,3 +21,7 @@ struct inner_node {
 	struct node * yes;
 	struct node * no;
 };
+
+struct leaf * leaf_ctor(char * name);
+
+struct inner_node * inner_node_ctor(char * question);
