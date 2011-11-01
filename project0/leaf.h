@@ -1,6 +1,6 @@
 #pragma once
 
-#include "leaf.c"
+#include "node.h"
 
 struct leaf {
 	struct node node;

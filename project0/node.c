@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <sys/uio.h>
 
 //virtual class constructor, only called by sub classes
 struct node * node_ctor(void) {

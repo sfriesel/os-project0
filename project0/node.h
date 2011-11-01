@@ -19,6 +19,7 @@ struct node {
 struct node * factory(FILE * file);
 
 struct node * node_ctor(void);
+void node_dtor(struct node * this);
 void node_ask_question(struct node * this);
 struct iovec node_serialize(struct node * this);
 
