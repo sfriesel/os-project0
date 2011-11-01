@@ -1,6 +1,6 @@
 CFLAGS ?= -std=c99 -Wall -Wextra -Werror -Wfatal-errors
 
-agg: main.c node.c node.h
+agg: main.c node.c node.h leaf.c leaf.h inner_node.c inner_node.h
 	$(CC) $(CFLAGS) -o $@ $(filter %.c,$^)
 
 clean:
