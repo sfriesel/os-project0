@@ -1,14 +1,12 @@
 #include "node.h"
-#include "stdlib.h"
 
-struct node_vtable {
-	bool (*ask_question)(struct node * this);
-	char * (*serialize)(struct node * this);
-};
+#include <stdlib.h>
+#include <string.h>
 
-static const struct node_vtable leaf_funcs = { /*TODO*/ NULL, NULL };
 
-static const struct node_vtable inner_node_funcs = { /*TODO*/ NULL, NULL };
+static const struct node_vtable leaf_funcs = { /*TODO*/ NULL, NULL, NULL };
+
+static const struct node_vtable inner_node_funcs = { /*TODO*/ NULL, NULL, NULL };
 
 //virtual class constructor, only called by sub classes
 struct node * node_ctor(void) {
@@ -17,12 +15,17 @@ struct node * node_ctor(void) {
 	return this;
 }
 
+void node_dtor(struct node * this) {
+	free(this);
+}
+
 struct leaf * leaf_ctor(char * name) {
 	struct node * super = node_ctor();
 	super->vtable = &leaf_funcs;
 	
 	struct leaf * this = realloc(super, sizeof(*this));
-	this->name = name;
+	this->name = malloc(strlen(name) + 1);
+	strcpy(this->name, name);
 	
 	return this;
 }
@@ -32,7 +35,18 @@ struct inner_node * inner_node_ctor(char * question) {
 	super->vtable = &inner_node_funcs;
 	
 	struct inner_node * this = realloc(super, sizeof(*this));
-	this->question = question;
+	this->question = malloc(strlen(question) + 1);
+	strcpy(this->question, question);
 	
 	return this;
+}
+
+void leaf_dtor(struct leaf * this) {
+	free(this->name);
+	node_dtor(&this->node);
+}
+
+void inner_node_dtor(struct inner_node * this) {
+	free(this->question);
+	node_dtor(&this->node);
 }
