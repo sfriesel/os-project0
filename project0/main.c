@@ -21,7 +21,7 @@ int main(int argc, char * argv[]) {
 		exit(1);
 	}
 	
-	struct node * root = factory(f);
+	struct node * root = node_factory(f);
 	fclose(f);
 	
 	if(!root) {

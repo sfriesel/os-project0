@@ -19,7 +19,7 @@ struct node {
 	struct inner_node * parent;
 };
 
-struct node * factory(FILE * file);
+struct node * node_factory(FILE * file);
 
 struct node * node_ctor(struct inner_node * parent);
 void node_dtor(struct node * this);

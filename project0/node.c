@@ -93,7 +93,7 @@ struct node * recursive_read(FILE * file) {
 	return NULL;
 }
 
-struct node * factory(FILE * file) {
+struct node * node_factory(FILE * file) {
 	uint8_t header[] = { 'A', 'G', 'G', '0', 1, 2, 3, 4 };
 	uint8_t input[8];
 	if(!fread(&input, sizeof(input), 1, file)) {
