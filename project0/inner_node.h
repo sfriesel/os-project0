@@ -9,5 +9,5 @@ struct inner_node {
 	struct node * no;
 };
 
-struct inner_node * inner_node_ctor(char * question);
+struct inner_node * inner_node_ctor(char * question, struct node * yes, struct node * no);
 void inner_node_dtor(struct inner_node * this);

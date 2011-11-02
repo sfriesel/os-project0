@@ -23,6 +23,10 @@ void node_ask_question(struct node * this) {
 	this->vtable->ask_question(this);
 }
 
+struct node * node_process_answer(struct node * this, char answer, struct node * parent, struct node * root) {
+	return this->vtable->process_answer(this, answer, parent, root);
+}
+
 struct iovec node_serialize(struct node * this) {
 	return this->vtable->serialize(this);
 }

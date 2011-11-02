@@ -1,4 +1,5 @@
 #include "leaf.h"
+#include "inner_node.h"
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -27,6 +28,41 @@ void leaf_dtor(struct leaf * this) {
 void leaf_ask_question(struct node * super) {
 	struct leaf * this = (struct leaf*)super;
 	printf("Is it a %s?\n", this->name);
+}
+
+struct node * leaf_process_answer(struct node * super, char answer, struct inner_node * parent, struct node * root) {
+	struct leaf * this = (struct leaf*)super;
+	switch(answer) {
+	case 'j':
+		return root;
+		break;
+	case 'n':
+		{
+			puts("What animal where you thinking of?");
+			char input[1024];
+			fgets(input, sizeof(input), stdin);
+			if(ferror(stdin) || feof(stdin)) {
+				exit(1);
+			}
+			struct leaf * new_leaf = leaf_ctor(input);
+			puts("Enter a question so that the answer is 'yes' for your animal and 'no' for the other one.\n");
+			fgets(input, sizeof(input), stdin);
+			if(ferror(stdin) || feof(stdin)) {
+				exit(1);
+			}
+			struct inner_node * new_node = inner_node_ctor(input, &new_leaf->node, &this->node);
+			
+			if(parent->yes == &this->node) {
+				parent->yes = &new_node->node;
+			} else {
+				parent->no = &new_node->node;
+			}
+			return (struct node*)new_leaf;
+		}
+		break;
+	default:
+		return (struct node*)this;
+	}
 }
 
 struct iovec leaf_serialize(struct node * super) {

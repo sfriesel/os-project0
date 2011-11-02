@@ -8,13 +8,15 @@
 
 static const struct node_vtable inner_node_funcs = { /*TODO*/ NULL, NULL, NULL, NULL };
 
-struct inner_node * inner_node_ctor(char * question) {
+struct inner_node * inner_node_ctor(char * question, struct node * yes, struct node * no) {
 	struct node * super = node_ctor();
 	super->vtable = &inner_node_funcs;
 	
 	struct inner_node * this = realloc(super, sizeof(*this));
 	this->question = malloc(strlen(question) + 1);
 	strcpy(this->question, question);
+	this->yes = yes;
+	this->no = no;
 	
 	return this;
 }
@@ -27,6 +29,20 @@ void inner_node_dtor(struct inner_node * this) {
 void inner_node_ask_question(struct node * super) {
 	struct inner_node * this = (struct inner_node*)super;
 	printf("%s\n", this->question);
+}
+
+struct node * inner_node_process_answer(struct node * super, char answer, struct inner_node * parent, struct node * root) {
+	struct inner_node * this = (struct inner_node*)super;
+	switch(answer) {
+	case 'j':
+		return this->yes;
+		break;
+	case 'n':
+		return this->no;
+		break;
+	default:
+		return (struct node*)this;
+	}
 }
 
 struct iovec inner_node_serialize(struct node * super) {
