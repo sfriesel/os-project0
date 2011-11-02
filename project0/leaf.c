@@ -7,7 +7,17 @@
 #include <arpa/inet.h>
 #include <sys/uio.h>
 
-static const struct node_vtable leaf_funcs = { /*TODO*/ NULL, NULL, NULL, NULL };
+void leaf_ask_question(struct node * super);
+struct node * leaf_process_answer(struct node * super, char answer, struct node ** root);
+struct iovec leaf_serialize(struct node * super);
+void leaf_dtor(struct node * this);
+
+static const struct node_vtable leaf_funcs = {
+	.ask_question = leaf_ask_question,
+	.process_answer = leaf_process_answer,
+	.serialize = leaf_serialize,
+	.node_dtor = leaf_dtor
+};
 
 struct leaf * leaf_ctor(char * name) {
 	struct node * super = node_ctor(NULL);
@@ -20,7 +30,8 @@ struct leaf * leaf_ctor(char * name) {
 	return this;
 }
 
-void leaf_dtor(struct leaf * this) {
+void leaf_dtor(struct node * super) {
+	struct leaf * this = (struct leaf*)super;
 	free(this->name);
 	node_dtor(&this->node);
 }

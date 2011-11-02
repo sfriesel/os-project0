@@ -6,7 +6,17 @@
 #include <arpa/inet.h>
 #include <sys/uio.h>
 
-static const struct node_vtable inner_node_funcs = { /*TODO*/ NULL, NULL, NULL, NULL };
+void inner_node_ask_question(struct node * super);
+struct node * inner_node_process_answer(struct node * super, char answer, struct node ** root);
+struct iovec inner_node_serialize(struct node * super);
+void inner_node_dtor(struct node * this);
+
+static const struct node_vtable inner_node_funcs = {
+	.ask_question = inner_node_ask_question,
+	.process_answer = inner_node_process_answer,
+	.serialize = inner_node_serialize,
+	.node_dtor = inner_node_dtor
+};
 
 struct inner_node * inner_node_ctor(char * question, struct node * yes, struct node * no) {
 	struct node * super = node_ctor(NULL);
@@ -21,7 +31,8 @@ struct inner_node * inner_node_ctor(char * question, struct node * yes, struct n
 	return this;
 }
 
-void inner_node_dtor(struct inner_node * this) {
+void inner_node_dtor(struct node * super) {
+	struct inner_node * this = (struct inner_node*)super;
 	free(this->question);
 	node_dtor(&this->node);
 }

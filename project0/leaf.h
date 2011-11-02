@@ -8,5 +8,5 @@ struct leaf {
 };
 
 struct leaf * leaf_ctor(char * name);
-void leaf_dtor(struct leaf * this);
+void leaf_dtor(struct node * this);
 
