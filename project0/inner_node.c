@@ -64,7 +64,7 @@ struct iovec inner_node_serialize(struct node * super) {
 	uint32_t len_network_order = htonl(question_len);
 	
 	struct iovec yes_tree = node_serialize(this->yes);
-	struct iovec no_tree = node_serialize(this->yes);
+	struct iovec no_tree = node_serialize(this->no);
 	
 	struct iovec result;
 	result.iov_len = sizeof(uint8_t) + sizeof(uint32_t) + question_len + yes_tree.iov_len + no_tree.iov_len;
