@@ -49,14 +49,19 @@ struct node * recursive_read(FILE * file) {
 				goto error;
 			}
 			len = ntohl(len);
-			char * name = malloc(len + 1);
-			if(!name) {
+			char * question = malloc(len + 1);
+			if(!question) {
 				puts("malloc failed");
 				exit(1);
 			}
-			name[len] = '\0';
-		
-			struct leaf * result = leaf_ctor(name);
+			if(!fread(question, len, 1, file)) {
+				goto error;
+			}
+			question[len] = '\0';
+			struct node * yes = recursive_read(file);
+			struct node * no = recursive_read(file);
+			
+			struct inner_node * result = inner_node_ctor(question, yes, no);
 			return &result->node;
 		}
 	case 1:
@@ -66,16 +71,17 @@ struct node * recursive_read(FILE * file) {
 				goto error;
 			}
 			len = ntohl(len);
-			char * question = malloc(len + 1);
-			if(!question) {
+			char * name = malloc(len + 1);
+			if(!name) {
 				puts("malloc failed");
 				exit(1);
 			}
-			question[len] = '\0';
-			struct node * yes = recursive_read(file);
-			struct node * no = recursive_read(file);
+			if(!fread(name, len, 1, file)) {
+				goto error;
+			}
+			name[len] = '\0';
 			
-			struct inner_node * result = inner_node_ctor(question, yes, no);
+			struct leaf * result = leaf_ctor(name);
 			return &result->node;
 		}
 	default:
