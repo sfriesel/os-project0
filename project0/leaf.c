@@ -10,7 +10,7 @@
 static const struct node_vtable leaf_funcs = { /*TODO*/ NULL, NULL, NULL, NULL };
 
 struct leaf * leaf_ctor(char * name) {
-	struct node * super = node_ctor();
+	struct node * super = node_ctor(NULL);
 	super->vtable = &leaf_funcs;
 	
 	struct leaf * this = realloc(super, sizeof(*this));
@@ -30,11 +30,11 @@ void leaf_ask_question(struct node * super) {
 	printf("Is it a %s?\n", this->name);
 }
 
-struct node * leaf_process_answer(struct node * super, char answer, struct inner_node * parent, struct node * root) {
+struct node * leaf_process_answer(struct node * super, char answer, struct node ** root) {
 	struct leaf * this = (struct leaf*)super;
 	switch(answer) {
 	case 'j':
-		return root;
+		return *root;
 		break;
 	case 'n':
 		{
@@ -45,6 +45,11 @@ struct node * leaf_process_answer(struct node * super, char answer, struct inner
 				exit(1);
 			}
 			struct leaf * new_leaf = leaf_ctor(input);
+			if(!*root) {
+				*root = (struct node*)new_leaf;
+				return *root;
+			}
+			
 			puts("Enter a question so that the answer is 'yes' for your animal and 'no' for the other one.\n");
 			fgets(input, sizeof(input), stdin);
 			if(ferror(stdin) || feof(stdin)) {
@@ -52,12 +57,14 @@ struct node * leaf_process_answer(struct node * super, char answer, struct inner
 			}
 			struct inner_node * new_node = inner_node_ctor(input, &new_leaf->node, &this->node);
 			
-			if(parent->yes == &this->node) {
-				parent->yes = &new_node->node;
+			if(!this->node.parent) {
+				*root = &new_node->node;
+			} else if(this->node.parent->yes == &this->node) {
+				this->node.parent->yes = &new_node->node;
 			} else {
-				parent->no = &new_node->node;
+				this->node.parent->no = &new_node->node;
 			}
-			return (struct node*)new_leaf;
+			return *root;
 		}
 		break;
 	default:

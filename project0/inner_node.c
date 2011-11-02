@@ -9,7 +9,7 @@
 static const struct node_vtable inner_node_funcs = { /*TODO*/ NULL, NULL, NULL, NULL };
 
 struct inner_node * inner_node_ctor(char * question, struct node * yes, struct node * no) {
-	struct node * super = node_ctor();
+	struct node * super = node_ctor(NULL);
 	super->vtable = &inner_node_funcs;
 	
 	struct inner_node * this = realloc(super, sizeof(*this));
@@ -31,7 +31,7 @@ void inner_node_ask_question(struct node * super) {
 	printf("%s\n", this->question);
 }
 
-struct node * inner_node_process_answer(struct node * super, char answer, struct inner_node * parent, struct node * root) {
+struct node * inner_node_process_answer(struct node * super, char answer, struct node ** root) {
 	struct inner_node * this = (struct inner_node*)super;
 	switch(answer) {
 	case 'j':
