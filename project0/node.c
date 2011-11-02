@@ -36,7 +36,7 @@ struct iovec node_serialize(struct node * this) {
 	return this->vtable->serialize(this);
 }
 
-struct node * recursive_read(FILE * file) {
+static struct node * recursive_read(FILE * file) {
 	uint8_t type;
 	if(!fread(&type, sizeof(type), 1, file)) {
 		goto error;
