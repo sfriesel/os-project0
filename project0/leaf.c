@@ -55,25 +55,26 @@ struct node * leaf_process_answer(struct node * super, char answer, struct node 
 			if(ferror(stdin) || feof(stdin)) {
 				exit(1);
 			}
-			struct leaf * new_leaf = leaf_ctor(input);
+			struct leaf * new_leaf = leaf_ctor(strtok(input, "\n"));
 			if(!*root) {
 				*root = (struct node*)new_leaf;
 				return *root;
 			}
 			
-			puts("Enter a question so that the answer is 'yes' for your animal and 'no' for the other one.\n");
+			printf("Enter a question so that the answer is 'yes' for %s and 'no' for %s.\n", new_leaf->name, this->name);
 			fgets(input, sizeof(input), stdin);
 			if(ferror(stdin) || feof(stdin)) {
 				exit(1);
 			}
-			struct inner_node * new_node = inner_node_ctor(input, &new_leaf->node, &this->node);
+			struct inner_node * old_parent = this->node.parent;
+			struct inner_node * new_node = inner_node_ctor(strtok(input, "\n"), &new_leaf->node, &this->node);
 			
-			if(!this->node.parent) {
+			if(!old_parent) {
 				*root = &new_node->node;
-			} else if(this->node.parent->yes == &this->node) {
-				this->node.parent->yes = &new_node->node;
+			} else if(old_parent->yes == &this->node) {
+				old_parent->yes = &new_node->node;
 			} else {
-				this->node.parent->no = &new_node->node;
+				old_parent->no = &new_node->node;
 			}
 			return *root;
 		}

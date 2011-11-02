@@ -26,7 +26,9 @@ struct inner_node * inner_node_ctor(char * question, struct node * yes, struct n
 	this->question = malloc(strlen(question) + 1);
 	strcpy(this->question, question);
 	this->yes = yes;
+	yes->parent = this;
 	this->no = no;
+	no->parent = this;
 	
 	return this;
 }
