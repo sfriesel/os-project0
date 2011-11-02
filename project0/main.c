@@ -10,7 +10,8 @@
 int main(int argc, char * argv[]) {
 	char input[1024];
 	if(argc != 2) {
-		printf("usage: %s <filename>\n", argv[0]);
+		printf("usage: %s <filename>\n(the file can be empty)\n", argv[0]);
+		exit(-1);
 	}
 	
 	FILE * f = fopen(argv[1], "r");
