@@ -20,9 +20,11 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
+#define PRI_COUNT (PRI_MAX + 1 - PRI_MIN)
+
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
-static struct list ready_list;
+static struct list ready_lists[PRI_COUNT];
 
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
@@ -87,10 +89,12 @@ static tid_t allocate_tid (void);
 void
 thread_init (void) 
 {
+  int i;
   ASSERT (intr_get_level () == INTR_OFF);
 
   lock_init (&tid_lock);
-  list_init (&ready_list);
+  for(i = 0; i < PRI_COUNT; ++i)
+      list_init (&ready_lists[PRI_MIN + i]);
   list_init (&all_list);
 
   /* Set up a thread structure for the running thread. */
@@ -245,7 +249,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_push_back (&ready_lists[t->priority], &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -316,7 +320,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    list_push_back (&ready_lists[cur->priority], &cur->elem);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -493,10 +497,13 @@ alloc_frame (struct thread *t, size_t size)
 static struct thread *
 next_thread_to_run (void) 
 {
-  if (list_empty (&ready_list))
-    return idle_thread;
-  else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  int i;
+  for(i = 0; i < PRI_COUNT; ++i)
+    {
+      if (!list_empty (&ready_lists[PRI_MIN + i]))
+          return list_entry (list_pop_front (&ready_lists[PRI_MIN + i]), struct thread, elem);
+    }
+  return idle_thread;
 }
 
 /* Completes a thread switch by activating the new thread's page
