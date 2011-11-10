@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -29,6 +30,9 @@ static struct list ready_lists[PRI_COUNT];
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
+
+/* List of processes blocked by thread_block_until. */
+static struct list sleeping_list;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -96,6 +100,7 @@ thread_init (void)
   for(i = 0; i < PRI_COUNT; ++i)
       list_init (&ready_lists[PRI_MIN + i]);
   list_init (&all_list);
+  list_init (&sleeping_list);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -126,6 +131,7 @@ thread_start (void)
 void
 thread_tick (void) 
 {
+  struct thread *ready;
   struct thread *t = thread_current ();
 
   /* Update statistics. */
@@ -137,6 +143,17 @@ thread_tick (void)
 #endif
   else
     kernel_ticks++;
+
+  /* unblock tasks in sleeping list */
+  int64_t now = timer_ticks();
+  while (!list_empty (&sleeping_list))
+    {
+      ready = list_entry (list_front (&sleeping_list), struct thread, elem);
+      if (now < ready->wakeup_time)
+          break;
+      list_pop_front (&sleeping_list);
+      thread_unblock (ready);
+    }
 
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
@@ -230,6 +247,33 @@ thread_block (void)
 
   thread_current ()->status = THREAD_BLOCKED;
   schedule ();
+}
+
+static bool
+thread_earlier(const struct list_elem *a,
+               const struct list_elem *b,
+               void *aux)
+{
+  int64_t a_time = list_entry(a, struct thread, elem)->wakeup_time;
+  int64_t b_time = list_entry(b, struct thread, elem)->wakeup_time;
+  return a_time < b_time;
+}
+
+/* Puts the current thread to sleep.  It will not be scheduled
+   again until timer_ticks() is at least ticks. */
+void
+thread_block_until (int64_t ticks)
+{
+  enum intr_level old_level;
+  struct thread *t;
+  ASSERT (!intr_context ());
+  old_level = intr_disable ();
+
+  t = thread_current ();
+  t->wakeup_time = ticks;
+  list_insert_ordered (&sleeping_list, &t->elem, thread_earlier, NULL);
+  thread_block ();
+  intr_set_level (old_level);
 }
 
 /* Transitions a blocked thread T to the ready-to-run state.
@@ -592,3 +636,4 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
