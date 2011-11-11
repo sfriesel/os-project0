@@ -100,7 +100,8 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
-    int64_t wakeup_time;                /* Time when the thread should be waked up */
+    int64_t wakeup_time;                /* Time when the thread should be waked up if sleeping */
+    struct list held_locks;
   };
 
 /* If false (default), use round-robin scheduler.
@@ -133,6 +134,7 @@ typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
+int thread_get_priority_of (struct thread *t);
 void thread_set_priority (int);
 
 int thread_get_nice (void);

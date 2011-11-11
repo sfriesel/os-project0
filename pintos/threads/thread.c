@@ -293,7 +293,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_lists[t->priority], &t->elem);
+  list_push_back (&ready_lists[thread_get_priority_of(t)], &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -364,7 +364,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_lists[cur->priority], &cur->elem);
+    list_push_back (&ready_lists[thread_get_priority ()], &cur->elem);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -399,6 +399,12 @@ int
 thread_get_priority (void) 
 {
   return thread_current ()->priority;
+}
+
+int
+thread_get_priority_of (struct thread *t)
+{
+  return t->priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -517,6 +523,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  list_init (&t->held_locks);
   list_push_back (&all_list, &t->allelem);
 }
 
