@@ -557,10 +557,8 @@ next_thread_to_run (void)
 {
   int i;
   for(i = PRI_MAX; i >= PRI_MIN; --i)
-    {
-      if (!list_empty (&ready_lists[i - PRI_MIN]))
-          return list_entry (list_pop_front (&ready_lists[i - PRI_MIN]), struct thread, elem);
-    }
+    if (!list_empty (&ready_lists[i - PRI_MIN]))
+      return list_entry (list_pop_front (&ready_lists[i - PRI_MIN]), struct thread, elem);
   return idle_thread;
 }
 
