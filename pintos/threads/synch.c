@@ -109,15 +109,36 @@ void
 sema_up (struct semaphore *sema) 
 {
   enum intr_level old_level;
+  struct thread *highest_waiter = NULL;
+  int highest_priority = 0;
+  struct list_elem *e;
 
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
-  if (!list_empty (&sema->waiters)) 
-    thread_unblock (list_entry (list_pop_front (&sema->waiters),
-                                struct thread, elem));
+
+  for (e = list_begin (&sema->waiters);
+       e != list_end (&sema->waiters);
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, elem);
+      int t_pri = thread_get_priority_of (t);
+      if(!highest_waiter || highest_priority < t_pri)
+        {
+          highest_waiter = t;
+          highest_priority = t_pri;
+        }
+    }
+
   sema->value++;
   intr_set_level (old_level);
+  if (highest_waiter)
+    {
+      list_remove(&highest_waiter->elem);
+      thread_unblock (highest_waiter);
+      if (highest_priority > thread_get_priority ())
+        thread_yield ();
+    }
 }
 
 static void sema_test_helper (void *sema_);
