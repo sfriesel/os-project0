@@ -1,6 +1,7 @@
 #ifndef THREADS_THREAD_H
 #define THREADS_THREAD_H
 
+#include "synch.h"
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
@@ -141,5 +142,9 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+void thread_lock_add (struct thread *t, struct lock *l);
+void thread_lock_remove (struct thread *t, struct lock *l);
+void thread_on_donation_update (struct thread *t, int donation);
 
 #endif /* threads/thread.h */

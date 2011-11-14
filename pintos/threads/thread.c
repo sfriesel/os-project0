@@ -390,6 +390,62 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
+void
+thread_lock_add (struct thread *t, struct lock *l)
+{
+  ASSERT (is_thread (t));
+  list_push_front (&t->held_locks, &l->elem);
+}
+
+static void
+thread_ensure_priority (struct thread *t, int priority)
+{
+  ASSERT (is_thread (t));
+
+  if (THREAD_READY == t->status)
+    {
+      list_remove (&t->elem);
+      list_push_back (&ready_lists[priority], &t->elem);
+    }
+}
+
+void
+thread_lock_remove (struct thread *t, struct lock *l)
+{
+  enum intr_level old_level;
+  ASSERT (is_thread (t));
+  old_level = intr_disable ();
+
+  int old_priority = thread_get_priority_of (t);
+
+  list_remove (&l->elem);
+
+  int new_priority = thread_get_priority_of (t);
+
+  if (new_priority < old_priority)
+    thread_ensure_priority (t, new_priority);
+
+  intr_set_level (old_level);
+}
+
+/* a thread with an effective priority of <donation> is waiting for
+   one of our locks. */
+void
+thread_on_donation_update (struct thread *t, int donation)
+{
+  enum intr_level old_level;
+  ASSERT (is_thread (t));
+
+  old_level = intr_disable ();
+
+  int old_priority = thread_get_priority_of (t);
+  /* move t in a higher ready list if the donation raises its effective priority */
+  if (donation > old_priority)
+    thread_ensure_priority (t, donation);
+
+  intr_set_level (old_level);
+}
+
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) 
@@ -405,13 +461,31 @@ thread_set_priority (int new_priority)
 int
 thread_get_priority (void) 
 {
-  return thread_current ()->priority;
+  return thread_get_priority_of (thread_current ());
 }
 
+//TODO locking
 int
 thread_get_priority_of (struct thread *t)
 {
-  return t->priority;
+  struct list_elem *e, *f;
+  ASSERT (is_thread (t));
+
+  int effective_priority = t->priority;
+  for (e = list_begin (&t->held_locks); e != list_end (&t->held_locks);
+       e = list_next (e))
+    {
+      struct lock *l = list_entry (e, struct lock, elem);
+      for (f = list_begin (&l->semaphore.waiters); f != list_end (&l->semaphore.waiters);
+           f = list_next (f))
+        {
+          struct thread *waiter = list_entry (f, struct thread, elem);
+          int dependant_priority = thread_get_priority_of (waiter);
+          if(effective_priority < dependant_priority)
+            effective_priority = dependant_priority;
+        }
+    }
+  return effective_priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
