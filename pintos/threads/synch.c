@@ -343,14 +343,35 @@ cond_wait (struct condition *cond, struct lock *lock)
 void
 cond_signal (struct condition *cond, struct lock *lock UNUSED) 
 {
+  struct semaphore_elem *highest_waiter = NULL;
+  int highest_priority = 0;
+  struct list_elem *e;
+
   ASSERT (cond != NULL);
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
 
-  if (!list_empty (&cond->waiters)) 
-    sema_up (&list_entry (list_pop_front (&cond->waiters),
-                          struct semaphore_elem, elem)->semaphore);
+  for (e = list_begin (&cond->waiters);
+       e != list_end (&cond->waiters);
+       e = list_next (e))
+    {
+      struct semaphore_elem *elem = list_entry (e, struct semaphore_elem, elem);
+      struct semaphore *s = &elem->semaphore;
+      struct thread *t = list_entry (list_front (&s->waiters), struct thread, elem);
+
+      int t_pri = thread_get_priority_of (t);
+      if(!highest_waiter || highest_priority < t_pri)
+        {
+          highest_waiter = elem;
+          highest_priority = t_pri;
+        }
+    }
+  if (highest_waiter)
+    {
+      list_remove (&highest_waiter->elem);
+      sema_up (&highest_waiter->semaphore);
+    }
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
