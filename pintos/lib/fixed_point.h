@@ -11,7 +11,7 @@ typedef int32_t fp_t;
 static inline int
 fp_floor (fp_t n)
 {
-  return i / FRACTION;
+  return n / FRACTION;
 }
 
 static inline int
@@ -19,7 +19,7 @@ fp_round_nearest (fp_t n)
 {
   n += FRACTION / 2;
   ASSERT (n >= FRACTION / 2);
-  return fp_floor (result);
+  return fp_floor (n);
 }
 
 static inline fp_t
