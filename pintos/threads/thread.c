@@ -136,6 +136,38 @@ thread_update_recent_cpu (struct thread *t, void *aux)
   t->recent_cpu = fp_add (fp_mul (coeff, t->recent_cpu), t->nice);
 }
 
+static void
+thread_ensure_priority (struct thread *t, int priority)
+{
+  ASSERT (is_thread (t));
+  ASSERT (priority >= PRI_MIN && priority <= PRI_MAX);
+
+  if (THREAD_READY == t->status)
+    {
+      list_remove (&t->elem);
+      list_push_back (&ready_lists[priority], &t->elem);
+    }
+}
+
+//call with interrupts disabled
+static void
+thread_update_priority (struct thread *t, void *aux UNUSED)
+{
+  ASSERT (is_thread (t));
+
+  if(thread_mlfqs && t != idle_thread)
+  {
+    int new_pri = PRI_MAX - (t->recent_cpu / 4) - (t->nice * 2);
+    if (new_pri < PRI_MIN)
+      new_pri = PRI_MIN;
+    if (new_pri > PRI_MAX)
+      new_pri = PRI_MAX;
+    if (new_pri != t->priority)
+      thread_ensure_priority (t, new_pri);
+    t->priority = new_pri;
+  }
+}
+
 /* Called by the timer interrupt handler at each timer tick.
    Thus, this function runs in an external interrupt context. */
 void
@@ -147,12 +179,16 @@ thread_tick (void)
   /* Update statistics. */
   if (t == idle_thread)
     idle_ticks++;
-#ifdef USERPROG
-  else if (t->pagedir != NULL)
-    user_ticks++;
-#endif
   else
-    kernel_ticks++;
+    {
+      t->recent_cpu = fp_add (t->recent_cpu, fp_from_int (1));
+#ifdef USERPROG
+      if (t->pagedir != NULL)
+        user_ticks++;
+      else
+#endif
+        kernel_ticks++;
+    }
 
   /* unblock tasks in sleeping list */
   int64_t now = timer_ticks();
@@ -167,9 +203,12 @@ thread_tick (void)
 
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
+  {
+    thread_update_priority(t, NULL);
     intr_yield_on_return ();
+  }
   /* recalculation at full second */
-  if (0 == now % TIMER_FREQ)
+  if (thread_mlfqs && 0 == now % TIMER_FREQ)
     {
       int ready_threads = (t == idle_thread) ? 0 : 1;
       int i;
@@ -178,7 +217,7 @@ thread_tick (void)
       // load_avg *= 59/60
       load_avg = fp_mul (load_avg, fp_div (fp_from_int (59), fp_from_int (60)));
       // load_avg += ready_threads / 60
-      load_avg = fp_add (load_avg,fp_div (ready_threads, fp_from_int (60)));
+      load_avg = fp_add (load_avg,fp_div (fp_from_int (ready_threads), fp_from_int (60)));
 
       //coeff = 2 * load_avg
       fp_t coeff = fp_mul (fp_from_int (2), load_avg);
@@ -186,6 +225,7 @@ thread_tick (void)
       coeff = fp_div (coeff, fp_add (coeff, fp_from_int (1)));
 
       thread_foreach (thread_update_recent_cpu, &coeff);
+      thread_foreach (thread_update_priority, NULL);
     }
 }
 
@@ -426,18 +466,6 @@ thread_lock_add (struct thread *t, struct lock *l)
   list_push_front (&t->held_locks, &l->elem);
 }
 
-static void
-thread_ensure_priority (struct thread *t, int priority)
-{
-  ASSERT (is_thread (t));
-
-  if (THREAD_READY == t->status)
-    {
-      list_remove (&t->elem);
-      list_push_back (&ready_lists[priority], &t->elem);
-    }
-}
-
 void
 thread_lock_remove (struct thread *t, struct lock *l)
 {
@@ -521,7 +549,9 @@ thread_get_priority_of (struct thread *t)
 void
 thread_set_nice (int nice)
 {
-  thread_current ()->nice = nice;
+  struct thread *t = thread_current ();
+  t->nice = nice;
+  thread_update_priority (t, NULL);
 }
 
 /* Returns the current thread's nice value. */
@@ -630,8 +660,11 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
-  //TODO inherit niceness
-  t->nice = 0;
+  struct thread *parent = running_thread ();
+  if(is_thread (parent))
+    t->nice = parent->nice;
+  else
+    t->nice = 0;
   t->magic = THREAD_MAGIC;
   list_init (&t->held_locks);
   list_push_back (&all_list, &t->allelem);
