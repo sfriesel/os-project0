@@ -157,7 +157,10 @@ thread_update_priority (struct thread *t, void *aux UNUSED)
 
   if(thread_mlfqs && t != idle_thread)
   {
-    int new_pri = PRI_MAX - (t->recent_cpu / 4) - (t->nice * 2);
+    fp_t temp = fp_from_int (PRI_MAX);
+    temp = fp_sub (temp, fp_div (t->recent_cpu, fp_from_int (4)));
+    temp = fp_sub (temp, fp_mul (fp_from_int (t->nice), fp_from_int (2)));
+    int new_pri = fp_round_nearest (temp);
     if (new_pri < PRI_MIN)
       new_pri = PRI_MIN;
     if (new_pri > PRI_MAX)

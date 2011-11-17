@@ -18,7 +18,6 @@ static inline int
 fp_round_nearest (fp_t n)
 {
   n += FRACTION / 2;
-  ASSERT (n >= FRACTION / 2);
   return fp_floor (n);
 }
 
@@ -36,7 +35,7 @@ fp_add (fp_t a, fp_t b)
 }
 
 static inline fp_t
-fp_subtract (fp_t a, fp_t b)
+fp_sub (fp_t a, fp_t b)
 {
   return a - b;
 }
