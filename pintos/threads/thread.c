@@ -12,6 +12,7 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "devices/timer.h"
+#include <fixed_point.h>
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -59,6 +60,7 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
+static fp_t load_avg = 0;
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -158,6 +160,18 @@ thread_tick (void)
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
+  /* recalculation at full second */
+  if (0 == now % TIMER_FREQ)
+    {
+      int ready_threads = (t == idle_thread) ? 0 : 1;
+      int i;
+      for (i = 0; i < PRI_COUNT; ++i)
+        ready_threads += (int)list_size(&ready_lists[i]);
+      // load_avg *= 59/60
+      load_avg = fp_multiply (load_avg, fp_divide (fp_from_int (59), fp_from_int (60)));
+      // load_avg += ready_threads / 60
+      load_avg = fp_add (load_avg,fp_divide (ready_threads, fp_from_int (60)));
+    }
 }
 
 /* Prints thread statistics. */
@@ -506,8 +520,8 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  // round(100 * load_avg)
+  return fp_round_nearest (fp_multiply (fp_from_int(100), load_avg));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
@@ -602,6 +616,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->nice = 0;
   t->magic = THREAD_MAGIC;
   list_init (&t->held_locks);
   list_push_back (&all_list, &t->allelem);
