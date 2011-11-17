@@ -255,7 +255,7 @@ thread_block (void)
 static bool
 thread_earlier(const struct list_elem *a,
                const struct list_elem *b,
-               void *aux)
+               void *aux UNUSED)
 {
   int64_t a_time = list_entry(a, struct thread, elem)->wakeup_time;
   int64_t b_time = list_entry(b, struct thread, elem)->wakeup_time;
