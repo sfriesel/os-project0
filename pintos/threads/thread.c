@@ -128,6 +128,14 @@ thread_start (void)
   sema_down (&idle_started);
 }
 
+static void
+thread_update_recent_cpu (struct thread *t, void *aux)
+{
+  ASSERT (is_thread (t));
+  fp_t coeff = *(fp_t*)aux;
+  t->recent_cpu = fp_add (fp_mul (coeff, t->recent_cpu), t->nice);
+}
+
 /* Called by the timer interrupt handler at each timer tick.
    Thus, this function runs in an external interrupt context. */
 void
@@ -168,9 +176,16 @@ thread_tick (void)
       for (i = 0; i < PRI_COUNT; ++i)
         ready_threads += (int)list_size(&ready_lists[i]);
       // load_avg *= 59/60
-      load_avg = fp_multiply (load_avg, fp_divide (fp_from_int (59), fp_from_int (60)));
+      load_avg = fp_mul (load_avg, fp_div (fp_from_int (59), fp_from_int (60)));
       // load_avg += ready_threads / 60
-      load_avg = fp_add (load_avg,fp_divide (ready_threads, fp_from_int (60)));
+      load_avg = fp_add (load_avg,fp_div (ready_threads, fp_from_int (60)));
+
+      //coeff = 2 * load_avg
+      fp_t coeff = fp_mul (fp_from_int (2), load_avg);
+      //coeff /= coeff + 1
+      coeff = fp_div (coeff, fp_add (coeff, fp_from_int (1)));
+
+      thread_foreach (thread_update_recent_cpu, &coeff);
     }
 }
 
@@ -521,15 +536,14 @@ int
 thread_get_load_avg (void) 
 {
   // round(100 * load_avg)
-  return fp_round_nearest (fp_multiply (fp_from_int(100), load_avg));
+  return fp_round_nearest (fp_mul (fp_from_int(100), load_avg));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return fp_round_nearest (fp_mul (fp_from_int(100), thread_current ()->recent_cpu));
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -616,6 +630,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  //TODO inherit niceness
   t->nice = 0;
   t->magic = THREAD_MAGIC;
   list_init (&t->held_locks);

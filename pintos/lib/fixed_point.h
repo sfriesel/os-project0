@@ -42,7 +42,7 @@ fp_subtract (fp_t a, fp_t b)
 }
 
 static inline fp_t
-fp_multiply (fp_t a, fp_t b)
+fp_mul (fp_t a, fp_t b)
 {
   int64_t result = (int64_t)a * (int64_t)b;
   result /= FRACTION;
@@ -50,7 +50,7 @@ fp_multiply (fp_t a, fp_t b)
 }
 
 static inline fp_t
-fp_divide (fp_t a, fp_t b)
+fp_div (fp_t a, fp_t b)
 {
   int64_t result = (int64_t)a * (int64_t)FRACTION;
   result /= b;
@@ -63,9 +63,9 @@ fp_pow (fp_t base, int exp)
 {
   fp_t result = fp_from_int (1);
   for (; exp > 0; --exp)
-    result = fp_multiply (result, base);
+    result = fp_mul (result, base);
   for (; exp < 0; ++exp)
-    result = fp_divide (result, base);
+    result = fp_div (result, base);
   return result;
 }
 #endif
