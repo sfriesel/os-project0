@@ -101,6 +101,14 @@ sema_try_down (struct semaphore *sema)
   return success;
 }
 
+static bool
+sema_waiter_less (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+{
+  struct thread *ta = list_entry (a, struct thread, elem);
+  struct thread *tb = list_entry (b, struct thread, elem);
+  return thread_get_priority_of (ta) < thread_get_priority_of (tb);
+}
+
 /* Up or "V" operation on a semaphore.  Increments SEMA's value
    and wakes up one thread of those waiting for SEMA, if any.
 
@@ -109,36 +117,25 @@ void
 sema_up (struct semaphore *sema) 
 {
   enum intr_level old_level;
-  struct thread *highest_waiter = NULL;
-  int highest_priority = 0;
-  struct list_elem *e;
 
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
 
-  for (e = list_begin (&sema->waiters);
-       e != list_end (&sema->waiters);
-       e = list_next (e))
-    {
-      struct thread *t = list_entry (e, struct thread, elem);
-      int t_pri = thread_get_priority_of (t);
-      if(!highest_waiter || highest_priority < t_pri)
-        {
-          highest_waiter = t;
-          highest_priority = t_pri;
-        }
-    }
-
   sema->value++;
+
+  int highest_priority = PRI_MIN;
+  struct list_elem *e = list_max (&sema->waiters, sema_waiter_less, NULL);
+  if(e != list_tail (&sema->waiters))
+  {
+    struct thread *highest_waiter = list_entry (e, struct thread, elem);
+    highest_priority = thread_get_priority_of (highest_waiter);
+    list_remove (e);
+    thread_unblock (highest_waiter);
+  }
   intr_set_level (old_level);
-  if (highest_waiter)
-    {
-      list_remove(&highest_waiter->elem);
-      thread_unblock (highest_waiter);
-      if (highest_priority > thread_get_priority ())
-        thread_yield ();
-    }
+  if (highest_priority > thread_get_priority ())
+    thread_yield ();
 }
 
 static void sema_test_helper (void *sema_);
@@ -333,6 +330,14 @@ cond_wait (struct condition *cond, struct lock *lock)
   lock_acquire (lock);
 }
 
+static bool
+cond_waiter_less (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+{
+  struct semaphore *sa = &list_entry (a, struct semaphore_elem, elem)->semaphore;
+  struct semaphore *sb = &list_entry (b, struct semaphore_elem, elem)->semaphore;
+  return sema_waiter_less (list_front (&sa->waiters), list_front (&sb->waiters), NULL);
+}
+
 /* If any threads are waiting on COND (protected by LOCK), then
    this function signals one of them to wake up from its wait.
    LOCK must be held before calling this function.
@@ -343,32 +348,15 @@ cond_wait (struct condition *cond, struct lock *lock)
 void
 cond_signal (struct condition *cond, struct lock *lock UNUSED) 
 {
-  struct semaphore_elem *highest_waiter = NULL;
-  int highest_priority = 0;
-  struct list_elem *e;
-
   ASSERT (cond != NULL);
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
 
-  for (e = list_begin (&cond->waiters);
-       e != list_end (&cond->waiters);
-       e = list_next (e))
+  struct list_elem *e = list_max (&cond->waiters, cond_waiter_less, NULL);
+  if (e != list_tail (&cond->waiters))
     {
-      struct semaphore_elem *elem = list_entry (e, struct semaphore_elem, elem);
-      struct semaphore *s = &elem->semaphore;
-      struct thread *t = list_entry (list_front (&s->waiters), struct thread, elem);
-
-      int t_pri = thread_get_priority_of (t);
-      if(!highest_waiter || highest_priority < t_pri)
-        {
-          highest_waiter = elem;
-          highest_priority = t_pri;
-        }
-    }
-  if (highest_waiter)
-    {
+      struct semaphore_elem *highest_waiter = list_entry (e, struct semaphore_elem, elem);
       list_remove (&highest_waiter->elem);
       sema_up (&highest_waiter->semaphore);
     }
