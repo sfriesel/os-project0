@@ -160,14 +160,16 @@ thread_update_priority (struct thread *t, void *aux UNUSED)
     fp_t temp = fp_from_int (PRI_MAX);
     temp = fp_sub (temp, fp_div (t->recent_cpu, fp_from_int (4)));
     temp = fp_sub (temp, fp_mul (fp_from_int (t->nice), fp_from_int (2)));
-    int new_pri = fp_round_nearest (temp);
+    int new_pri = fp_floor (temp);
     if (new_pri < PRI_MIN)
       new_pri = PRI_MIN;
     if (new_pri > PRI_MAX)
       new_pri = PRI_MAX;
     if (new_pri != t->priority)
-      thread_ensure_priority (t, new_pri);
-    t->priority = new_pri;
+      {
+        thread_ensure_priority (t, new_pri);
+        t->priority = new_pri;
+      }
   }
 }
 
@@ -300,6 +302,7 @@ thread_create (const char *name, int priority,
   intr_set_level (old_level);
 
   /* Add to run queue. */
+  thread_update_priority (t, NULL);
   thread_unblock (t);
 
   if(t->priority > thread_get_priority ())
@@ -521,7 +524,6 @@ thread_get_priority (void)
   return thread_get_priority_of (thread_current ());
 }
 
-//TODO locking
 int
 thread_get_priority_of (struct thread *t)
 {
@@ -549,6 +551,10 @@ thread_get_priority_of (struct thread *t)
 void
 thread_set_nice (int nice)
 {
+  if (nice < -20)
+    nice = -20;
+  if (nice > 20)
+    nice = 20;
   struct thread *t = thread_current ();
   t->nice = nice;
   thread_update_priority (t, NULL);
