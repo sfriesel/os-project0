@@ -207,7 +207,7 @@ thread_tick (void)
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
   {
-    thread_update_priority(t, NULL);
+    thread_update_priority (t, NULL);
     intr_yield_on_return ();
   }
   /* recalculation at full second */
