@@ -133,7 +133,7 @@ thread_update_recent_cpu (struct thread *t, void *aux)
 {
   ASSERT (is_thread (t));
   fp_t coeff = *(fp_t*)aux;
-  t->recent_cpu = fp_add (fp_mul (coeff, t->recent_cpu), t->nice);
+  t->recent_cpu = fp_add (fp_mul (coeff, t->recent_cpu), fp_from_int (t->nice));
 }
 
 static void
