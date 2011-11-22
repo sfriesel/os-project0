@@ -510,11 +510,8 @@ thread_on_donation_update (struct thread *t, int donation)
 void
 thread_set_priority (int new_priority) 
 {
-  int i;
   thread_current ()->priority = new_priority;
-  for (i = new_priority + 1; i <= PRI_MAX; ++i)
-    if(!list_empty (&ready_lists[i - PRI_MIN]))
-      thread_yield ();
+  thread_yield ();
 }
 
 /* Returns the current thread's priority. */
