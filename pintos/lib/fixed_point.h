@@ -6,66 +6,60 @@
 //every fixed point value is a multiple of the real number 1/FRACTION
 #define FRACTION (1 << 14)
 
-typedef int32_t fp_t;
+typedef struct fp
+{
+  int32_t v;
+} fp_t;
 
 static inline int
 fp_floor (fp_t n)
 {
-  return n / FRACTION;
+  return n.v / FRACTION;
 }
 
 static inline int
 fp_round_nearest (fp_t n)
 {
-  n += FRACTION / 2;
+  n.v += FRACTION / 2;
   return fp_floor (n);
 }
 
 static inline fp_t
 fp_from_int (int i)
 {
-  ASSERT (i <= fp_floor (INT32_MAX));
-  return i * FRACTION;
+  fp_t result = { i * FRACTION };
+  return result;
 }
 
 static inline fp_t
 fp_add (fp_t a, fp_t b)
 {
-  return a + b;
+  fp_t result = { a.v + b.v };
+  return result;
 }
 
 static inline fp_t
 fp_sub (fp_t a, fp_t b)
 {
-  return a - b;
+  fp_t result = { a.v - b.v };
+  return result;
 }
 
 static inline fp_t
 fp_mul (fp_t a, fp_t b)
 {
-  int64_t result = (int64_t)a * (int64_t)b;
-  result /= FRACTION;
-  return (fp_t)result;
+  int64_t temp = (int64_t)a.v * (int64_t)b.v;
+  fp_t result = { temp / (int64_t)FRACTION };
+  return result;
 }
 
 static inline fp_t
 fp_div (fp_t a, fp_t b)
 {
-  int64_t result = (int64_t)a * (int64_t)FRACTION;
-  result /= b;
-  ASSERT (result <= (int64_t)UINT32_MAX);
-  return (fp_t)result;
-}
-
-static inline fp_t
-fp_pow (fp_t base, int exp)
-{
-  fp_t result = fp_from_int (1);
-  for (; exp > 0; --exp)
-    result = fp_mul (result, base);
-  for (; exp < 0; ++exp)
-    result = fp_div (result, base);
+  int64_t temp = (int64_t)a.v * (int64_t)FRACTION;
+  fp_t result = { temp / (int64_t)b.v };
   return result;
 }
+
 #endif
 
