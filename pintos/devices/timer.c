@@ -126,7 +126,6 @@ timer_check_wakeups (void)
 void
 timer_sleep (int64_t ticks) 
 {
-  ASSERT (!intr_context ());
   int64_t start = timer_ticks ();
 
   ASSERT (intr_get_level () == INTR_ON);

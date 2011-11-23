@@ -123,7 +123,6 @@ typedef void thread_func (void *aux);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
 
 void thread_block (void);
-void thread_block_until(int64_t ticks);
 void thread_unblock (struct thread *);
 
 struct thread *thread_current (void);
@@ -147,7 +146,7 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 void thread_lock_add (struct thread *t, struct lock *l);
-void thread_lock_remove (struct thread *t, struct lock *l);
+void thread_lock_remove (struct lock *l);
 void thread_on_donation_update (struct thread *t, int donation);
 
 #endif /* threads/thread.h */

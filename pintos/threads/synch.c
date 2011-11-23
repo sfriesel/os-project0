@@ -135,12 +135,7 @@ sema_up (struct semaphore *sema)
   }
   intr_set_level (old_level);
   if (highest_priority > thread_get_priority ())
-    {
-      if (intr_context ())
-        intr_yield_on_return ();
-      else
-        thread_yield ();
-    }
+    intr_context () ? intr_yield_on_return () : thread_yield ();
 }
 
 static void sema_test_helper (void *sema_);
@@ -216,8 +211,6 @@ void
 lock_acquire (struct lock *lock)
 {
   enum intr_level old_level;
-
-  ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
@@ -258,15 +251,12 @@ lock_try_acquire (struct lock *lock)
 void
 lock_release (struct lock *lock) 
 {
-  enum intr_level old_level;
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-  old_level = intr_disable ();
+  thread_lock_remove (lock);
   lock->holder = NULL;
-  thread_lock_remove (thread_current (), lock);
   sema_up (&lock->semaphore);
-  intr_set_level (old_level);
 }
 
 /* Returns true if the current thread holds LOCK, false

@@ -144,7 +144,6 @@ thread_ensure_priority (struct thread *t, int priority)
     }
 }
 
-//call with interrupts disabled
 static void
 thread_update_priority (struct thread *t, void *aux UNUSED)
 {
@@ -434,25 +433,12 @@ thread_lock_add (struct thread *t, struct lock *l)
 }
 
 void
-thread_lock_remove (struct thread *t, struct lock *l)
+thread_lock_remove (struct lock *l)
 {
-  enum intr_level old_level;
-  ASSERT (is_thread (t));
-  old_level = intr_disable ();
-
-  int old_priority = thread_get_priority_of (t);
-
   list_remove (&l->elem);
-
-  int new_priority = thread_get_priority_of (t);
-
-  if (new_priority < old_priority)
-    thread_ensure_priority (t, new_priority);
-
-  intr_set_level (old_level);
 }
 
-/* a thread with an effective priority of <donation> is waiting for
+/* a thread with an effective priority of DONATION is waiting for
    one of our locks. */
 void
 thread_on_donation_update (struct thread *t, int donation)
@@ -751,4 +737,3 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
-
