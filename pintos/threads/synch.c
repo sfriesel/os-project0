@@ -210,17 +210,17 @@ lock_init (struct lock *lock)
 void
 lock_acquire (struct lock *lock)
 {
-  enum intr_level old_level;
+  ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  old_level = intr_disable ();
+  enum intr_level old_level = intr_disable ();
   if(lock->holder)
     thread_on_donation_update (lock->holder, thread_get_priority ());
+  intr_set_level (old_level);
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
   thread_lock_add (lock->holder, lock);
-  intr_set_level (old_level);
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
