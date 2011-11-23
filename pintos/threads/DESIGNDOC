@@ -19,44 +19,51 @@ Stefan Friesel <sfriesel@zedat.fu-berlin.de>
 >> A1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
-in thread.c:
-+/* List of processes blocked to be waked up after timeout. */
+in timer.c:
 +static struct list sleeping_list;
+List of processes blocked to be waked up after timeout.
 
-in thread.h (struct thread):
-+    int64_t wakeup_time; /* Time when the thread should be waked up */
++struct sleep_semaphore
++{
++  struct semaphore sema;
++  int64_t wakeup_time;
++  struct list_elem elem;
++};
+Struct for bookkeeping of threads in sleeping_list. Upping the semaphore
+wakes the corresponding thread.
 
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe what happens in a call to timer_sleep(),
 >> including the effects of the timer interrupt handler.
-Instead of yielding the thread in a loop until enough time has passed, it blocks
-itself by calling the newly created function thread_block_until(). This
-functions sets the calling thread to blocked and moves it in the sleeping_list.
+The running thread creates a struct sleep_semaphore for itself and adds it
+to the sleeping list atomically. It then waits on the semaphore, which gets
+released after wakeup_time is reached by a service routine called from
+timer_interrupt().
 
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
-This list is sorted by earliest wakeup-time, so that on each thread_tick only
-the head of the list needs to be checked for possible wakeup (constant time).
+The list of sleeping threads is sorted by earliest wakeup-time, so that on
+each timer_interrupt only the front of the list needs to be checked.
 
 ---- SYNCHRONIZATION ----
 
 >> A4: How are race conditions avoided when multiple threads call
 >> timer_sleep() simultaneously?
-By disabling interrupts in thread_block_until().
+By disabling interrupts while editing sleeping_list
 
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
-By disabling interrupts in thread_block_until().
+By disabling interrupts while editing sleeping_list
 
 ---- RATIONALE ----
 
 >> A6: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
-Adding a field to struct thread avoids dynamically creating new structures and
-keeping the code changes minimal. Another possibility would have been to
-implement most functionality in timer.c, keeping a seperate list and requiring
-a seperate timer interrupt handler.
+The design keeps timer operation seperate from threading as much as possible.
+Another possibility would have been to add a wakeup field directly in struct
+thread and work directly with the threads at the cost of modularization.
+
 
 			 PRIORITY SCHEDULING
 			 ===================
@@ -80,7 +87,16 @@ in thread.h (struct thread):
 >> .png file.)
 Each thread has a list of all locks it currently holds. By looking at the
 lock->waiters list of each held lock it knows all the threads it currently
-receives donations from.
+receives donations from (and, by recursion, the donators of its donators etc.).
+
++---thread---+
+| held_locks |--->+---lock---+
+|  priority  |    | waiters  |-->+---thread---+
++------------+    +----------+   | held_locks |--->+---lock---+
+                                 |  priority  |    | waiters  |-->+---thread---+
+                                 +------------+    +----------+   | held_locks |
+                                                                  |  priority  |
+                                                                  +------------+
 
 ---- ALGORITHMS ----
 
@@ -92,10 +108,10 @@ instead of waking up the first in the list.
 >> B4: Describe the sequence of events when a call to lock_acquire()
 >> causes a priority donation.  How is nested donation handled?
 The running thread notices, that the lock is currently held and calls
-thread_on_donation_update() on the holding thread. This causes the
-holding thread to recalculate its effective priority. By getting the
-_effective_ priority of donating threads, recursive donation is possible
-to infinite depth.
+thread_on_donation_update() on the holding thread. This causes the holding
+thread to recalculate its effective priority and possibly reschedule itself. By
+getting the _effective_ priority of donating threads, recursive donation is
+possible.
 
 >> B5: Describe the sequence of events when lock_release() is called
 >> on a lock that a higher-priority thread is waiting for.
@@ -108,12 +124,22 @@ a higher priority than the running thread.
 >> B6: Describe a potential race in thread_set_priority() and explain
 >> how your implementation avoids it.  Can you use a lock to avoid
 >> this race?
-
+If the thread is rescheduled directly in response to the priority change a race
+condition might cause the thread to end up in the wrong ready queue. My
+implementation only allows changing the running threads priority, so this race
+cannot happen. A lock for accesing the ready queues could be used to avoid the
+race.
 
 ---- RATIONALE ----
 
 >> B7: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
+While adding a lock list to struct thread mixes threading and synchronization
+primitives, it allows for easy priority inheritance (especially recursive),
+because the threads a re directly reachable from all primitives without adding
+new data structures. It would have been possible to keep seperate lists about
+which threads are waiting on which semaphore, but it would require more code and
+incur additional overhead.
 
 
 			  ADVANCED SCHEDULER
@@ -125,11 +151,15 @@ a higher priority than the running thread.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+in lib/fixed_point.h:
 A fixed point type represented as a multiple of 2^(-14)
-+typedef int32_t fp_t;
++typedef struct fp
++{
++  int32_t v;
++} fp_t;
 
 in thread.c:
-+static fp_t load_avg = 0;
++static fp_t load_avg = { 0 };
 
 in thread.h (struct thread):
 +    int nice;                           /* Niceness */
@@ -145,24 +175,29 @@ in thread.h (struct thread):
 timer  recent_cpu    priority   thread
 ticks   A   B   C   A   B   C   to run
 -----  --  --  --  --  --  --   ------
- 0
- 4
- 8
-12
-16
-20
-24
-28
-32
-36
+ 0      0   1   2  63  60  58        A
+ 4      4   1   2  62  60  58        A
+ 8      8   1   2  61  60  58        A
+12     12   1   2  60  60  58        B
+16     12   5   2  60  59  58        A
+20     16   5   2  59  59  58        B
+24     16   9   2  59  58  58        A
+28     20   9   2  58  58  58        C
+32     20   9   6  58  58  57        B
+36     20   13  6  58  57  57        A
 
 >> C3: Did any ambiguities in the scheduler specification make values
 >> in the table uncertain?  If so, what rule did you use to resolve
 >> them?  Does this match the behavior of your scheduler?
+It is not specified in which order threads of the same priority get scheduled.
+Assumed round robin.
 
 >> C4: How is the way you divided the cost of scheduling between code
 >> inside and outside interrupt context likely to affect performance?
-Interrupt contexts are only used for recalculating average load and priorities once per second.
+Interrupt contexts are only used for recalculating average load and priorities
+once per second. The most expensive operation is probably determining the
+effective priority of threads with complex priority inheritance, which could be
+bad for performance in certain scenarios.
 
 ---- RATIONALE ----
 
@@ -170,6 +205,9 @@ Interrupt contexts are only used for recalculating average load and priorities o
 >> disadvantages in your design choices.  If you were to have extra
 >> time to work on this part of the project, how might you choose to
 >> refine or improve your design?
+The implementation is very close to the specification. The only major
+design decision being the use of an ADT for fixed point arithmetic.
+In some places disabling interrupts might be replaceable by locks.
 
 
 >> C6: The assignment explains arithmetic for fixed-point math in
@@ -179,27 +217,3 @@ Interrupt contexts are only used for recalculating average load and priorities o
 >> type and/or a set of functions or macros to manipulate fixed-point
 >> numbers, why did you do so?  If not, why not?
 I used an abstract data type to improve readability of formulas.
-
-			   SURVEY QUESTIONS
-			   ================
-
-Answering these questions is optional, but it will help us improve the
-course in future quarters.  Feel free to tell us anything you
-want--these questions are just to spur your thoughts.  You may also
-choose to respond anonymously in the course evaluations at the end of
-the quarter.
-
->> In your opinion, was this assignment, or any one of the three problems
->> in it, too easy or too hard?  Did it take too long or too little time?
-
->> Did you find that working on a particular part of the assignment gave
->> you greater insight into some aspect of OS design?
-
->> Is there some particular fact or hint we should give students in
->> future quarters to help them solve the problems?  Conversely, did you
->> find any of our guidance to be misleading?
-
->> Do you have any suggestions for the TAs to more effectively assist
->> students, either for future quarters or the remaining projects?
-
->> Any other comments?

@@ -26,7 +26,6 @@ static unsigned loops_per_tick;
 
 /* List of processes blocked by sleep. */
 static struct list sleeping_list;
-static struct lock sleeping_list_lock;
 
 static intr_handler_func timer_interrupt;
 static bool too_many_loops (unsigned loops);
@@ -42,7 +41,6 @@ timer_init (void)
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
   list_init (&sleeping_list);
-  lock_init (&sleeping_list_lock);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -134,9 +132,9 @@ timer_sleep (int64_t ticks)
   sema_init (&sleep_sema.sema, 0);
   sleep_sema.wakeup_time = start + ticks;
 
-  lock_acquire (&sleeping_list_lock);
+  enum intr_level old_level = intr_disable ();
   list_insert_ordered (&sleeping_list, &sleep_sema.elem, wake_earlier, NULL);
-  lock_release (&sleeping_list_lock);
+  intr_set_level (old_level);
   sema_down (&sleep_sema.sema);
 }
 
