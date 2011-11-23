@@ -11,7 +11,6 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
-#include "devices/timer.h"
 #include <fixed_point.h>
 #ifdef USERPROG
 #include "userprog/process.h"
@@ -196,11 +195,15 @@ thread_tick (void)
     thread_update_priority (t, NULL);
     intr_yield_on_return ();
   }
-  int64_t now = timer_ticks ();
-  /* recalculation at full second */
-  if (thread_mlfqs && 0 == now % TIMER_FREQ)
+}
+
+/* recalculation at full second. Called by timer_interrupt */
+void
+thread_full_second_update (void)
+{
+  if (thread_mlfqs)
     {
-      int ready_threads = (t == idle_thread) ? 0 : 1;
+      int ready_threads = (thread_current () == idle_thread) ? 0 : 1;
       int i;
       for (i = 0; i < PRI_COUNT; ++i)
         ready_threads += (int)list_size(&ready_lists[i]);

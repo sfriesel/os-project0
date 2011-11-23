@@ -104,7 +104,6 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
-    int64_t wakeup_time;                /* Time when the thread should be waked up if sleeping */
     struct list held_locks;
   };
 
@@ -117,6 +116,7 @@ void thread_init (void);
 void thread_start (void);
 
 void thread_tick (void);
+void thread_full_second_update (void);
 void thread_print_stats (void);
 
 typedef void thread_func (void *aux);
